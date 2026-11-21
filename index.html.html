@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Team Project Kanban</title>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--ink:#172033;--muted:#667085;--line:#e2e7f0;--accent:#3859d8;--soft:#edf1ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,Segoe UI,Arial,sans-serif}
+.wrap{max-width:1300px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-size:25px;margin:0}.sub,.muted{color:var(--muted);font-size:13px}.toolbar,.tabs,.filters{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:18px 0}
+button,select,input,textarea{font:inherit;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:white;color:var(--ink)}
+button{cursor:pointer}button.primary{background:var(--accent);color:white;border-color:var(--accent);font-weight:650}
+button:hover{filter:brightness(.97)}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+.stat,.panel,.column{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px}
+.stat b{display:block;font-size:26px;margin-top:3px}.tabs{border-bottom:1px solid var(--line);gap:18px}
+.tab{border:0;border-radius:0;background:transparent;padding:10px 3px;color:var(--muted);border-bottom:3px solid transparent}
+.tab.active{color:var(--accent);border-color:var(--accent);font-weight:700}
+.board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.column{background:#eef1f7;min-height:230px}.colhead{font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between}
+.dropzone{min-height:170px;display:flex;flex-direction:column;gap:9px}.dropzone.over{outline:2px dashed var(--accent);outline-offset:3px;border-radius:9px}
+.task{background:white;border:1px solid var(--line);border-radius:10px;padding:12px;cursor:grab;box-shadow:0 2px 5px #15264b0a}
+.taskid{font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.5px}.tasktitle{font-weight:700;margin:4px 0 9px}
+.pills{display:flex;gap:6px;flex-wrap:wrap}.pill{background:var(--soft);color:#3449a6;border-radius:30px;padding:3px 8px;font-size:11px}
+.taskfoot{display:flex;gap:7px;align-items:center;margin-top:10px}.taskfoot select{font-size:12px;padding:5px;flex:1;min-width:0}.small{font-size:12px;padding:5px 8px}
+.hidden{display:none!important}.gridform{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:650}.field.full{grid-column:1/-1}
+input,select,textarea{width:100%}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.panel{margin:14px 0}.panel h2{font-size:17px;margin:0 0 12px}.list{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+@media(max-width:760px){.wrap{padding:14px}.board{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.gridform{grid-template-columns:1fr}.field.full{grid-column:auto}}
+</style></head>
+<body><main class="wrap">
+<header class="top"><div><h1>Team Project Workspace</h1><div class="sub">Kanban task tracking · unique ticket IDs · team management</div></div><div class="muted">Shared board · saves automatically</div></header>
+<div class="toolbar"><label style="min-width:210px;flex:1">Project view<select id="projectFilter"><option value="all">All projects</option></select></label><label style="min-width:180px">Member view<select id="memberFilter"><option value="all">All members</option></select></label></div>
+<section class="stats"><div class="stat"><span class="muted">Total tickets</span><b id="total">0</b></div><div class="stat"><span class="muted">Initiate</span><b id="ninit">0</b></div><div class="stat"><span class="muted">In progress</span><b id="nprogress">0</b></div><div class="stat"><span class="muted">Completed</span><b id="ndone">0</b></div></section>
+<nav class="tabs"><button class="tab active" data-tab="board">Kanban Board</button><button class="tab" data-tab="manage">Manage Team & Projects</button></nav>
+<section id="boardView"><div class="board">
+<div class="column"><div class="colhead">○ Initiate <span id="cinit" class="muted"></span></div><div class="dropzone" data-status="init"></div></div>
+<div class="column"><div class="colhead">◷ In progress <span id="cprogress" class="muted"></span></div><div class="dropzone" data-status="progress"></div></div>
+<div class="column"><div class="colhead">✓ Completed <span id="cdone" class="muted"></span></div><div class="dropzone" data-status="done"></div></div>
+</div><p class="muted">Drag tickets between columns, or use the status selector on each ticket. Click a ticket card to view its full details.</p></section>
+<section id="ticketDetailView" class="hidden">
+<div class="panel">
+ <div class="top" style="margin-bottom:14px"><div><div class="muted" id="detailId">T0000</div><h2 id="detailTitle" style="font-size:23px;margin:3px 0">Ticket details</h2></div><button id="backToBoard">← Back to board</button></div>
+ <div class="gridform">
+  <div class="field"><span class="muted">Assigned member</span><div id="detailMember">—</div></div>
+  <div class="field"><span class="muted">Project</span><div id="detailProject">—</div></div>
+  <div class="field"><span class="muted">Current status</span><div id="detailStatus">—</div></div>
+  <div class="field"><span class="muted">Ticket ID</span><div id="detailTicketId">—</div></div>
+  <div class="field full"><span class="muted">Description</span><div id="detailDescription" style="white-space:pre-wrap;font-weight:400">No description added.</div></div>
+ </div>
+ <div class="actions"><button id="detailEdit" class="primary">Edit ticket</button><button id="detailDelete">Delete ticket</button></div>
+</div></section>
+<section id="manageView" class="hidden">
+<div class="panel"><h2>Add a task / create ticket</h2><form id="taskForm" class="gridform">
+<label class="field full">Task title<input id="taskTitle" required placeholder="e.g. Integrate camera module"></label>
+<label class="field">Assign member<select id="taskMember"></select></label><label class="field">Project<select id="taskProject"></select></label>
+<label class="field">Status<select id="taskStatus"><option value="init">Initiate</option><option value="progress">In progress</option><option value="done">Completed</option></select></label>
+<label class="field">Description (optional)<input id="taskDesc" placeholder="Short task details"></label>
+<div class="actions field full"><button class="primary" type="submit">＋ Create ticket</button><span class="muted">Ticket ID is generated automatically (T0001, T0002...).</span></div>
+</form></div>
+<div class="panel"><h2>Add team member</h2><form id="memberForm" class="actions"><input id="memberName" required placeholder="Member name" style="max-width:320px"><button class="primary">Add member</button></form><div id="memberList" class="list"></div></div>
+<div class="panel"><h2>Create project</h2><form id="projectForm" class="actions"><input id="projectName" required placeholder="Project name" style="max-width:320px"><button class="primary">Create project</button></form><div id="projectList" class="list"></div></div>
+<div class="panel"><h2>Reassign / move an existing ticket</h2><form id="moveForm" class="gridform">
+<label class="field">Ticket<select id="moveTask"></select></label><label class="field">Member<select id="moveMember"></select></label>
+<label class="field">Project<select id="moveProject"></select></label><label class="field">Status<select id="moveStatus"><option value="init">Initiate</option><option value="progress">In progress</option><option value="done">Completed</option></select></label>
+<div class="actions field full"><button class="primary">Update ticket</button></div></form></div>
+</section>
+<div class="toolbar"><button id="exportBtn">↓ Export CSV</button><button id="resetBtn">Reset sample data</button><span class="muted">Ticket IDs are permanent and are not reused.</span> <span id="syncStatus" class="muted"></span></div>
+</main>
+<script>
+const seed=[
+['Kunal','System 1 integration','init'],['Kunal','Flowchart','init'],['Kunal','Design encoder mounting','init'],
+['Kunal','Test in progress','progress'],['Kunal','Powerout','progress'],['Kunal','Model trained – increase dataset','progress'],
+['Kunal','Python script','done'],['Kunal','Camera purchase','done'],
+['Sahil','Design PPT','init'],['Sahil','Plan for POC','init'],
+['Sahil','Design fertilizer system','progress'],['Sahil','Tyre mounting – encoder mounting','progress'],['Sahil','Battery mount','progress'],
+['Sahil','Design draft','done'],['Sahil','Inter-intra mechanism final','done'],['Sahil','Calculations','done'],['Sahil','Motor finalization','done']];
+const initial=()=>({members:['Kunal','Sahil'],projects:['TIFAN'],tasks:seed.map((x,i)=>({id:i+1,member:x[0],title:x[1],status:x[2],project:'TIFAN',description:''})),nextId:18});
+// ====== PASTE YOUR FIREBASE REALTIME DATABASE URL HERE (see setup steps) ======
+const DB_URL='https://tifan-4c11a-default-rtdb.asia-southeast1.firebasedatabase.app';   // e.g. 'https://my-kanban-default-rtdb.firebaseio.com'
+// ================================================================================
+let state;try{state=JSON.parse(localStorage.getItem('teamKanbanState'))||initial()}catch{state=initial()}
+let lastJson='',saveTimer=null,inflight=0,dbReady=false;
+const $=id=>document.getElementById(id), statuses=['init','progress','done'], names={init:'Initiate',progress:'In progress',done:'Completed'};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const canon=o=>JSON.stringify(o,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.keys(v).sort().reduce((a,x)=>(a[x]=v[x],a),{}):v);
+function setSync(t){const el=document.getElementById('syncStatus');if(el)el.textContent=t}
+const dbUrl=()=>DB_URL.replace(/\/+$/,'')+'/kanban.json';
+const arr=v=>Array.isArray(v)?v.filter(x=>x!=null):(v&&typeof v==='object'?Object.values(v):[]);
+function normalize(d){return {members:arr(d.members),projects:arr(d.projects),tasks:arr(d.tasks).map(t=>({description:'',...t})),nextId:d.nextId||1}}
+function save(){
+ try{localStorage.setItem('teamKanbanState',JSON.stringify(state))}catch{}
+ if(!DB_URL||!dbReady)return;
+ const j=canon(state);if(j===lastJson)return;
+ lastJson=j;setSync('Saving…');clearTimeout(saveTimer);
+ saveTimer=setTimeout(()=>{inflight++;
+  fetch(dbUrl(),{method:'PUT',body:JSON.stringify(state)}).then(r=>{if(!r.ok)throw 0;setSync('● Synced')}).catch(()=>setSync('⚠ Not saved – check connection')).finally(()=>{inflight--})},150);
+}
+async function pull(){
+ if(inflight||saveTimer&&false)return;
+ try{
+  const r=await fetch(dbUrl(),{cache:'no-store'});if(!r.ok)throw 0;
+  const d=await r.json();
+  if(inflight)return;
+  if(d===null){dbReady=true;lastJson='';save();return}
+  const n=normalize(d),j=canon(n);dbReady=true;
+  if(j!==lastJson){lastJson=j;state=n;refresh();}
+  setSync('● Synced');
+ }catch{setSync('⚠ Offline – retrying…')}
+}
+if(DB_URL){
+ setSync('Connecting…');pull();
+ try{const es=new EventSource(dbUrl());['put','patch'].forEach(e=>es.addEventListener(e,pull))}catch{}
+ setInterval(pull,5000);
+}else setSync('Setup needed – works on this device only');
+function idText(n){return 'T'+String(n).padStart(4,'0')}
+function opts(arr,sel){return arr.map(v=>`<option value="${esc(v)}" ${v===sel?'selected':''}>${esc(v)}</option>`).join('')}
+function refresh(){
+ const pf=$('projectFilter').value||'all',mf=$('memberFilter').value||'all';
+ $('projectFilter').innerHTML='<option value="all">All projects</option>'+opts(state.projects,pf);
+ $('memberFilter').innerHTML='<option value="all">All members</option>'+opts(state.members,mf);
+ const shown=state.tasks.filter(t=>(pf==='all'||t.project===pf)&&(mf==='all'||t.member===mf));
+ $('total').textContent=shown.length;
+ statuses.forEach(s=>{$('n'+s).textContent=shown.filter(t=>t.status===s).length;$('c'+s).textContent=shown.filter(t=>t.status===s).length});
+ document.querySelectorAll('.dropzone').forEach(zone=>{
+  const s=zone.dataset.status,arr=shown.filter(t=>t.status===s);zone.innerHTML='';
+  if(!arr.length)zone.innerHTML='<div class="muted" style="padding:16px;text-align:center">No tickets here</div>';
+  arr.forEach(t=>{let el=document.createElement('article');el.className='task';el.draggable=true;el.dataset.id=t.id;
+   el.innerHTML=`<div class="taskid">${idText(t.id)}</div><div class="tasktitle">${esc(t.title)}</div><div class="pills"><span class="pill">${esc(t.member)}</span><span class="pill">${esc(t.project)}</span></div>${t.description?`<p class="muted">${esc(t.description)}</p>`:''}<div class="taskfoot"><select aria-label="Move ticket status" data-move="${t.id}">${statuses.map(x=>`<option value="${x}" ${x===t.status?'selected':''}>${names[x]}</option>`).join('')}</select><button type="button" class="small" data-edit="${t.id}">Edit</button><button type="button" class="small" data-delete="${t.id}" style="color:#b42318">Delete</button></div>`;
+   zone.appendChild(el);
+  });
+ });
+ const fill=(id,arr,sel)=>$(id).innerHTML=opts(arr,sel||arr[0]);
+ fill('taskMember',state.members);fill('taskProject',state.projects);fill('moveMember',state.members);
+ fill('moveProject',state.projects);
+ $('moveTask').innerHTML=state.tasks.map(t=>`<option value="${t.id}">${idText(t.id)} · ${esc(t.title)}</option>`).join('');
+ $('memberList').innerHTML=state.members.map(x=>`<span class="pill">${esc(x)}</span>`).join('');
+ $('projectList').innerHTML=state.projects.map(x=>`<span class="pill" style="display:inline-flex;align-items:center;gap:7px">${esc(x)} <button type="button" data-delete-project="${esc(x)}" aria-label="Delete ${esc(x)}" title="Delete project" style="border:0;background:transparent;color:#b42318;padding:0 2px;font-weight:800">×</button></span>`).join('');
+ save();
+}
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));$('boardView').classList.toggle('hidden',b.dataset.tab!=='board');$('manageView').classList.toggle('hidden',b.dataset.tab!=='manage');$('ticketDetailView').classList.add('hidden')});
+$('projectFilter').onchange=refresh;$('memberFilter').onchange=refresh;
+$('taskForm').onsubmit=e=>{e.preventDefault();if(!state.members.length||!state.projects.length)return alert('Add a member and project first.');state.tasks.push({id:state.nextId++,title:$('taskTitle').value.trim(),member:$('taskMember').value,project:$('taskProject').value,status:$('taskStatus').value,description:$('taskDesc').value.trim()});e.target.reset();refresh()};
+$('memberForm').onsubmit=e=>{e.preventDefault();let n=$('memberName').value.trim();if(n&&!state.members.some(x=>x.toLowerCase()===n.toLowerCase()))state.members.push(n);e.target.reset();refresh()};
+$('projectForm').onsubmit=e=>{e.preventDefault();let n=$('projectName').value.trim();if(n&&!state.projects.some(x=>x.toLowerCase()===n.toLowerCase()))state.projects.push(n);e.target.reset();refresh()};
+$('projectList').addEventListener('click',e=>{
+ const b=e.target.closest('button[data-delete-project]'); if(!b)return;
+ e.preventDefault(); e.stopPropagation();
+ const project=b.getAttribute('data-delete-project');
+ const count=state.tasks.filter(t=>t.project===project).length;
+ const message=count?`Delete project "${project}" and its ${count} ticket(s)? This cannot be undone.`:`Delete project "${project}"?`;
+ if(!window.confirm(message))return;
+ state.projects=state.projects.filter(x=>x!==project);
+ state.tasks=state.tasks.filter(t=>t.project!==project);
+ if($('projectFilter').value===project)$('projectFilter').value='all';
+ refresh();
+});
+$('moveForm').onsubmit=e=>{e.preventDefault();let t=state.tasks.find(x=>x.id===+$('moveTask').value);if(t){t.member=$('moveMember').value;t.project=$('moveProject').value;t.status=$('moveStatus').value;refresh()}};
+document.querySelector('.board').addEventListener('change',e=>{if(e.target.dataset.move){let t=state.tasks.find(x=>x.id===+e.target.dataset.move);if(t){t.status=e.target.value;refresh()}}});
+function showTicketDetails(t){
+ if(!t)return;
+ $('detailId').textContent=idText(t.id);
+ $('detailTicketId').textContent=idText(t.id);
+ $('detailTitle').textContent=t.title;
+ $('detailMember').textContent=t.member||'Unassigned';
+ $('detailProject').textContent=t.project||'No project';
+ $('detailStatus').textContent=names[t.status]||t.status;
+ $('detailDescription').textContent=t.description||'No description added.';
+ $('boardView').classList.add('hidden');$('manageView').classList.add('hidden');$('ticketDetailView').classList.remove('hidden');
+ $('detailEdit').onclick=()=>{ $('ticketDetailView').classList.add('hidden');document.querySelector('[data-tab="manage"]').click();$('taskTitle').value=t.title;$('taskMember').value=t.member;$('taskProject').value=t.project;$('taskStatus').value=t.status;$('taskDesc').value=t.description;$('taskForm').onsubmit=ev=>{ev.preventDefault();Object.assign(t,{title:$('taskTitle').value.trim(),member:$('taskMember').value,project:$('taskProject').value,status:$('taskStatus').value,description:$('taskDesc').value.trim()});$('taskForm').reset();$('taskForm').onsubmit=createTask;refresh();showTicketDetails(t)};$('taskTitle').focus()};
+ $('detailDelete').onclick=()=>{if(confirm(`Delete ticket ${idText(t.id)} — "${t.title}"? This cannot be undone.`)){state.tasks=state.tasks.filter(x=>x.id!==t.id);$('ticketDetailView').classList.add('hidden');$('boardView').classList.remove('hidden');refresh()}};
+}
+$('backToBoard').onclick=()=>{$('ticketDetailView').classList.add('hidden');$('boardView').classList.remove('hidden');document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab==='board'));refresh()};
+document.querySelector('.board').addEventListener('click',e=>{
+ const del=e.target.closest('button[data-delete]');
+ if(del){
+   e.preventDefault(); e.stopPropagation();
+   const t=state.tasks.find(x=>x.id===Number(del.dataset.delete));
+   if(t && window.confirm(`Delete ticket ${idText(t.id)} — "${t.title}"? This cannot be undone.`)){
+     state.tasks=state.tasks.filter(x=>x.id!==t.id);
+     refresh();
+   }
+   return;
+ }
+ const edit=e.target.closest('button[data-edit]');
+ if(edit){
+   e.preventDefault(); e.stopPropagation();
+   const t=state.tasks.find(x=>x.id===Number(edit.dataset.edit));
+   if(!t)return;
+   $('taskTitle').value=t.title;
+   $('taskMember').value=t.member;
+   $('taskProject').value=t.project;
+   $('taskStatus').value=t.status;
+   $('taskDesc').value=t.description||'';
+   document.querySelector('[data-tab="manage"]').click();
+   $('taskForm').onsubmit=ev=>{
+     ev.preventDefault();
+     Object.assign(t,{
+       title:$('taskTitle').value.trim(),
+       member:$('taskMember').value,
+       project:$('taskProject').value,
+       status:$('taskStatus').value,
+       description:$('taskDesc').value.trim()
+     });
+     $('taskForm').reset();
+     $('taskForm').onsubmit=createTask;
+     refresh();
+   };
+   $('taskTitle').focus();
+   return;
+ }
+ if(e.target.closest('button,select'))return;
+ const card=e.target.closest('.task');
+ if(card){
+   const t=state.tasks.find(x=>x.id===Number(card.dataset.id));
+   showTicketDetails(t);
+ }
+});
+function createTask(e){e.preventDefault();if(!state.members.length||!state.projects.length)return alert('Add a member and project first.');state.tasks.push({id:state.nextId++,title:$('taskTitle').value.trim(),member:$('taskMember').value,project:$('taskProject').value,status:$('taskStatus').value,description:$('taskDesc').value.trim()});e.target.reset();refresh()}
+$('taskForm').onsubmit=createTask;
+document.querySelectorAll('.dropzone').forEach(z=>{z.ondragover=e=>{e.preventDefault();z.classList.add('over')};z.ondragleave=()=>z.classList.remove('over');z.ondrop=e=>{e.preventDefault();z.classList.remove('over');let t=state.tasks.find(x=>x.id===+e.dataTransfer.getData('text/plain'));if(t){t.status=z.dataset.status;refresh()}}});
+document.querySelector('.board').addEventListener('dragstart',e=>{let t=e.target.closest('.task');if(t)e.dataTransfer.setData('text/plain',t.dataset.id)});
+$('exportBtn').onclick=()=>{let rows=[['Ticket ID','Member','Project','Task','Status','Description'],...state.tasks.map(t=>[idText(t.id),t.member,t.project,t.title,names[t.status],t.description])];let csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');let a=document.createElement('a'),u=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.href=u;a.download='team-kanban-board.csv';a.click();URL.revokeObjectURL(u)};
+$('resetBtn').onclick=()=>{if(confirm('Reset board to original Kunal and Sahil sample tasks?')){state=initial();refresh()}};
+refresh();
+</script></body></html>
